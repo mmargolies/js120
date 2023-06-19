@@ -1,10 +1,11 @@
 /*
 TODO:
-  - Create an object to track move history for both CPU and user
+  - Improve move tracker:
+    - track win/loss for each move?
+  - Implement move tracking into game flow properly
   - Create a message object to hold all messages?
 */
 const rlSync = require('readline-sync');
-
 const prompt = str => console.log(`>> ${str}`);
 
 const VALID_CHOICES = {
@@ -24,6 +25,18 @@ const WINNING_COMBOS = {
 };
 
 const ROUNDS_TO_WIN_MATCH = 5;
+
+function createMoveTracker() {
+  return {
+    humanMoveHistory: [],
+    computerMoveHistory: [],
+
+    archiveMoves(humanMove, computerMove) {
+      this.humanMoveHistory.push(VALID_CHOICES[humanMove]);
+      this.computerMoveHistory.push(VALID_CHOICES[computerMove]);
+    }
+  };
+}
 
 function createPlayer() {
   return {
@@ -75,6 +88,7 @@ function createHuman() {
 const RPSGame = {
   human: createHuman(),
   computer: createComputer(),
+  moveHistory: createMoveTracker(),
 
   clearScreen() {
     console.clear();
@@ -147,10 +161,6 @@ const RPSGame = {
     this.computer.score = 0;
   },
 
-  humanWon() {
-    return this.human.score === ROUNDS_TO_WIN_MATCH;
-  },
-
   playAgain() {
     prompt('Would you like to play again (yes/no)?');
     let choiceToPlayAgain = rlSync.prompt().toLowerCase();
@@ -165,6 +175,7 @@ const RPSGame = {
       this.displayUserAndCompChoices();
       this.displayWinner();
       this.incrementScore();
+      this.moveHistory.archiveMoves(this.human.move, this.computer.move);
       this.clearAfterEachRound();
     }
   },
@@ -175,6 +186,8 @@ const RPSGame = {
     do {
       this.resetRoundScores();
       this.clearScreen();
+      prompt("Here's your move history:");
+      console.log(this.moveHistory.humanMoveHistory);
       this.playRound();
     } while (this.playAgain());
 
