@@ -1,5 +1,6 @@
 /*
 TODO:
+  - Create an object to track move history for both CPU and user
   - Create a message object to hold all messages?
 */
 const rlSync = require('readline-sync');
@@ -47,7 +48,6 @@ function createComputer() {
 }
 
 function createHuman() {
-
   let playerObj = createPlayer();
   let humanObj = {
     move: null,
