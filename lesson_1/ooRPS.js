@@ -1,12 +1,10 @@
-// TODO:
 /*
-  - Determine a winner
-  - Display a winner message
-  - Increment score based on winner
-
+TODO:
   - Create a message object to hold all messages?
 */
 const rlSync = require('readline-sync');
+
+const prompt = str => console.log(`>> ${str}`);
 
 const VALID_CHOICES = {
   r:  'rock',
@@ -24,6 +22,8 @@ const WINNING_COMBOS = {
   sp: ['rock', 'scissors']
 };
 
+const ROUNDS_TO_WIN_MATCH = 5;
+
 function createPlayer() {
   return {
     move: null,
@@ -34,6 +34,8 @@ function createPlayer() {
 function createComputer() {
   let playerObj = createPlayer();
   let computerObj = {
+    move: null,
+
     choose() {
       let choices = Object.keys(VALID_CHOICES);
       let randIdx = Math.floor(Math.random() * choices.length);
@@ -45,18 +47,21 @@ function createComputer() {
 }
 
 function createHuman() {
+
   let playerObj = createPlayer();
   let humanObj = {
+    move: null,
+
     choose() {
-      console.log(`Choose one: ${Object.values(VALID_CHOICES).join(', ')}`);
-      console.log('Please enter your choice as an abbreviation:');
-      console.log(`(${Object.keys(VALID_CHOICES).join(', ')})`);
+      prompt(`Choose one: ${Object.values(VALID_CHOICES).join(', ')}`);
+      prompt('Please enter your choice as an abbreviation:');
+      prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
 
       let choice = rlSync.prompt();
 
       while (!Object.keys(VALID_CHOICES).includes(choice)) {
-        console.log('Please enter a valid choice:');
-        console.log(`(${Object.keys(VALID_CHOICES).join(', ')})`);
+        prompt('Please enter a valid choice:');
+        prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
         choice = rlSync.prompt().toLowerCase();
       }
 
@@ -67,76 +72,114 @@ function createHuman() {
   return Object.assign(playerObj, humanObj);
 }
 
-// function createMove() {
-//   return {
-//     // possible state: type of move (paper, rock, scissors)
-//   };
-// }
-
-// function createRule() {
-//   return {
-//     // possible state? not clear whether Rules need state
-//   };
-// }
-
-// // Since we don't yet know where to put `compare`, let's define
-// // it as an ordinary function.
-// let compare = function(move1, move2) {
-//   // not yet implemented
-// };
-
 const RPSGame = {
   human: createHuman(),
   computer: createComputer(),
 
-  prompt(str) {
-    console.log(`>> ${str}`);
+  clearScreen() {
+    console.clear();
   },
 
   displayWelcomeMessage() {
-    this.prompt('Welcome to Rock, Paper, Scissors!');
+    prompt('Welcome to Rock, Paper, Scissors!\n');
   },
 
   displayGoodbyeMessage() {
-    this.prompt('Goodbye, thanks for playing!');
+    prompt('Goodbye, thanks for playing!');
+  },
+
+  displayRoundScore() {
+    if (!(this.human.score + this.computer.score)) return;
+
+    prompt(
+      `The current round score is: ` +
+      `${this.human.score} (You) -- ` +
+      `${this.computer.score} (Computer)\n`
+    );
+  },
+
+  displayUserAndCompChoices() {
+    this.clearScreen();
+    prompt('You chose: ' + VALID_CHOICES[this.human.move]);
+    prompt('The computer chose: ' + VALID_CHOICES[this.computer.move]);
   },
 
   displayWinner() {
-    let humanMove = this.human.move;
-    let computerMove = this.computer.move;
+    let playerChoice = this.human.move;
+    let compChoice = this.computer.move;
 
-    this.prompt('You chose: ' + VALID_CHOICES[humanMove]);
-    this.prompt('The computer chose: ' + VALID_CHOICES[computerMove]);
+    if (WINNING_COMBOS[playerChoice].includes(VALID_CHOICES[compChoice])) {
+      prompt('You won!');
+    } else if (
+      WINNING_COMBOS[compChoice].includes(VALID_CHOICES[playerChoice])) {
+      prompt('The computer won!');
+    } else {
+      prompt("It's a tie!");
+    }
+  },
 
-    // if ((humanMove === 'rock' && computerMove === 'scissors') ||
-    // (humanMove === 'paper' && computerMove === 'rock') ||
-    // (humanMove === 'scissors' && computerMove === 'paper')) {
-    //   this.prompt('You win!');
-    // } else if ((humanMove === 'rock' && computerMove === 'paper') ||
-    //         (humanMove === 'paper' && computerMove === 'scissors') ||
-    //         (humanMove === 'scissors' && computerMove === 'rock')) {
-    //   this.prompt('Computer wins!');
-    // } else {
-    //   this.prompt("It's a tie");
-    // }
+  incrementScore() {
+    let playerChoice = this.human.move;
+    let compChoice = this.computer.move;
+
+    if (WINNING_COMBOS[playerChoice].includes(VALID_CHOICES[compChoice])) {
+      this.human.score += 1;
+    } else if (
+      WINNING_COMBOS[compChoice].includes(VALID_CHOICES[playerChoice])) {
+      this.computer.score += 1;
+    }
+  },
+
+  clearAfterEachRound() {
+    rlSync.question(
+      '(Press Enter to continue...)', {hideEchoBack: true, mask: ''}
+    );
+    console.clear();
+  },
+
+  noMatchWinner() {
+    return this.human.score < ROUNDS_TO_WIN_MATCH &&
+           this.computer.score < ROUNDS_TO_WIN_MATCH;
+  },
+
+  resetRoundScores() {
+    this.human.score = 0;
+    this.computer.score = 0;
+  },
+
+  humanWon() {
+    return this.human.score === ROUNDS_TO_WIN_MATCH;
   },
 
   playAgain() {
-    this.prompt('Would you like to play again?');
+    prompt('Would you like to play again (yes/no)?');
     let choiceToPlayAgain = rlSync.prompt().toLowerCase();
     return ['yes', 'y'].includes(choiceToPlayAgain);
   },
 
-  play() {
-    while (true) {
-      this.displayWelcomeMessage();
+  playRound() {
+    while (this.noMatchWinner()) {
+      this.displayRoundScore();
       this.human.choose();
       this.computer.choose();
+      this.displayUserAndCompChoices();
       this.displayWinner();
-      if (!this.playAgain()) break;
+      this.incrementScore();
+      this.clearAfterEachRound();
     }
+  },
+
+  playMatch() {
+    this.displayWelcomeMessage();
+
+    do {
+      this.resetRoundScores();
+      this.clearScreen();
+      this.playRound();
+    } while (this.playAgain());
+
     this.displayGoodbyeMessage();
   },
 };
 
-RPSGame.play();
+RPSGame.playMatch();
