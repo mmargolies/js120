@@ -1,12 +1,19 @@
 /*
 TODO:
-  - Improve move tracker:
+  - Improve welcome screen
+  - Display rules etc.
+
+  - Improve move tracking:
     - track win/loss for each move?
-  - Implement move tracking into game flow properly
+
   - Create a message object to hold all messages?
+
+  - Weighted computer choice based on history?
 */
 const rlSync = require('readline-sync');
 const prompt = str => console.log(`>> ${str}`);
+
+const ROUNDS_TO_WIN_MATCH = 5;
 
 const VALID_CHOICES = {
   r:  'rock',
@@ -24,36 +31,25 @@ const WINNING_COMBOS = {
   sp: ['rock', 'scissors']
 };
 
-const ROUNDS_TO_WIN_MATCH = 5;
-
-function createMoveTracker() {
-  return {
-    humanMoveHistory: [],
-    computerMoveHistory: [],
-
-    archiveMoves(humanMove, computerMove) {
-      this.humanMoveHistory.push(VALID_CHOICES[humanMove]);
-      this.computerMoveHistory.push(VALID_CHOICES[computerMove]);
-    }
-  };
-}
 
 function createPlayer() {
   return {
     move: null,
     score: 0,
+    moveHistory: [],
   };
 }
 
 function createComputer() {
   let playerObj = createPlayer();
   let computerObj = {
-    move: null,
 
     choose() {
       let choices = Object.keys(VALID_CHOICES);
       let randIdx = Math.floor(Math.random() * choices.length);
+
       this.move = choices[randIdx];
+      this.moveHistory.push(VALID_CHOICES[this.move]);
     }
   };
 
@@ -63,22 +59,22 @@ function createComputer() {
 function createHuman() {
   let playerObj = createPlayer();
   let humanObj = {
-    move: null,
 
     choose() {
       prompt(`Choose one: ${Object.values(VALID_CHOICES).join(', ')}`);
       prompt('Please enter your choice as an abbreviation:');
       prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
 
-      let choice = rlSync.prompt();
+      let choice = rlSync.prompt().trim().toLowerCase();
 
       while (!Object.keys(VALID_CHOICES).includes(choice)) {
         prompt('Please enter a valid choice:');
         prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
-        choice = rlSync.prompt().toLowerCase();
+        choice = rlSync.prompt().trim().toLowerCase();
       }
 
       this.move = choice;
+      this.moveHistory.push(VALID_CHOICES[this.move]);
     },
   };
 
@@ -88,7 +84,6 @@ function createHuman() {
 const RPSGame = {
   human: createHuman(),
   computer: createComputer(),
-  moveHistory: createMoveTracker(),
 
   clearScreen() {
     console.clear();
@@ -107,7 +102,7 @@ const RPSGame = {
 
     prompt(
       `The current round score is: ` +
-      `${this.human.score} (You) -- ` +
+      `(You) ${this.human.score} -- ` +
       `${this.computer.score} (Computer)\n`
     );
   },
@@ -148,7 +143,45 @@ const RPSGame = {
     rlSync.question(
       '(Press Enter to continue...)', {hideEchoBack: true, mask: ''}
     );
-    console.clear();
+    this.clearScreen();
+  },
+
+  getMoveHistoryChoice() {
+    prompt('Would you like to see the history of prior moves?');
+    prompt(
+      '(Enter "0" to skip, "1" for your moves, "2" for the computers moves' + ' "3" for both.)'
+    );
+
+    let choice = rlSync.prompt().trim().toLowerCase();
+    while (!['0', '1', '2', '3'].includes(choice)) {
+      prompt('Please enter a valid choice:');
+      prompt(
+        '(Enter "0" to skip, "1" for your moves, "2" for the computers moves'
+        + ' "3" for both.)'
+      );
+      choice = rlSync.prompt();
+    }
+
+    return choice;
+  },
+
+  displayMoveHistory(playerChoice) {
+    this.clearScreen();
+
+    switch (playerChoice) {
+      case '0': break;
+      case '1': console.log(this.humanMoveHistory.join(', '), '\n');
+        break;
+      case '2': console.log(this.computerMoveHistory.join(', '), '\n');
+        break;
+      case '3':
+        prompt('Your move history:');
+        console.log(this.human.moveHistory.join(', '), '\n');
+        prompt('The computers move history:');
+        console.log(this.computer.moveHistory.join(', '), '\n');
+        break;
+      default: break;
+    }
   },
 
   noMatchWinner() {
@@ -162,8 +195,13 @@ const RPSGame = {
   },
 
   playAgain() {
-    prompt('Would you like to play again (yes/no)?');
-    let choiceToPlayAgain = rlSync.prompt().toLowerCase();
+    prompt('Would you like to play again (yes/no, y/n)?');
+    let choiceToPlayAgain = rlSync.prompt().trim().toLowerCase();
+    while (!['yes', 'y', 'no', 'n'].includes(choiceToPlayAgain)) {
+      this.clearScreen();
+      prompt('Please enter a valid choice. (yes/no, y/n)?');
+      choiceToPlayAgain = rlSync.prompt().trim().toLowerCase();
+    }
     return ['yes', 'y'].includes(choiceToPlayAgain);
   },
 
@@ -175,7 +213,6 @@ const RPSGame = {
       this.displayUserAndCompChoices();
       this.displayWinner();
       this.incrementScore();
-      this.moveHistory.archiveMoves(this.human.move, this.computer.move);
       this.clearAfterEachRound();
     }
   },
@@ -186,11 +223,12 @@ const RPSGame = {
     do {
       this.resetRoundScores();
       this.clearScreen();
-      prompt("Here's your move history:");
-      console.log(this.moveHistory.humanMoveHistory);
       this.playRound();
+      let historyChoice = this.getMoveHistoryChoice();
+      this.displayMoveHistory(historyChoice);
     } while (this.playAgain());
 
+    this.clearScreen();
     this.displayGoodbyeMessage();
   },
 };
