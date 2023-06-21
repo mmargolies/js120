@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /*
 TODO:
   - Improve welcome screen
@@ -39,6 +40,15 @@ function createPlayer() {
     moveHistory: [],
   };
 }
+
+/*
+Come up with some rules based on the history of moves to help the computer make its moves. For instance, if the human tends to win over 60% of his hands when the computer chooses "rock," then decrease the likelihood that the computer will choose "rock." First, come up with an appropriate rule, then implement some history analysis. Use the analysis to adjust the weight of each choice -- for instance, increase the weight to increase the likelihood of choosing a particular move. Currently, the computer has a 33% chance of making any given move -- it's those odds that you need to weight. Finally, have the computer consider the weight of each choice when choosing a move.
+
+  - need to record win/loss
+  - determine win% for a given hand
+  - 'weight' computer decision based on human win%
+  - 
+*/
 
 function createComputer() {
   let playerObj = createPlayer();
@@ -139,7 +149,7 @@ const RPSGame = {
     }
   },
 
-  clearAfterEachRound() {
+  waitForAcknowledgement() {
     rlSync.question(
       '(Press Enter to continue...)', {hideEchoBack: true, mask: ''}
     );
@@ -170,9 +180,9 @@ const RPSGame = {
 
     switch (playerChoice) {
       case '0': break;
-      case '1': console.log(this.humanMoveHistory.join(', '), '\n');
+      case '1': console.log(this.human.moveHistory.join(', '), '\n');
         break;
-      case '2': console.log(this.computerMoveHistory.join(', '), '\n');
+      case '2': console.log(this.computer.moveHistory.join(', '), '\n');
         break;
       case '3':
         prompt('Your move history:');
@@ -213,13 +223,11 @@ const RPSGame = {
       this.displayUserAndCompChoices();
       this.displayWinner();
       this.incrementScore();
-      this.clearAfterEachRound();
+      this.waitForAcknowledgement();
     }
   },
 
   playMatch() {
-    this.displayWelcomeMessage();
-
     do {
       this.resetRoundScores();
       this.clearScreen();
@@ -227,10 +235,18 @@ const RPSGame = {
       let historyChoice = this.getMoveHistoryChoice();
       this.displayMoveHistory(historyChoice);
     } while (this.playAgain());
+  },
 
+  playGame() {
+    this.displayWelcomeMessage();
+    // TOODO
+    // this.displayRules()
+    // this.displayWinCondition()
+    this.waitForAcknowledgement();
+    this.playMatch();
     this.clearScreen();
     this.displayGoodbyeMessage();
-  },
+  }
 };
 
-RPSGame.playMatch();
+RPSGame.playGame();
