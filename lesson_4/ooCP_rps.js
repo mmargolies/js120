@@ -26,39 +26,38 @@ function Player() {
 }
 
 function Human() {
-  this.choose = function() {
-    prompt(`Choose one: ${Object.values(VALID_CHOICES).join(', ')}`);
-    prompt('Please enter your choice as an abbreviation:');
-    prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
-
-    let choice = rlSync.prompt().trim().toLowerCase();
-
-    while (!Object.keys(VALID_CHOICES).includes(choice)) {
-      prompt('Please enter a valid choice:');
-      prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
-      choice = rlSync.prompt().trim().toLowerCase();
-    }
-
-    this.move = choice;
-    this.moveHistory.push(VALID_CHOICES[this.move]);
-  };
+  Player.call(this);
 }
+
+Human.prototype.choose = function() {
+  prompt(`Choose one: ${Object.values(VALID_CHOICES).join(', ')}`);
+  prompt('Please enter your choice as an abbreviation:');
+  prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
+
+  let choice = rlSync.prompt().trim().toLowerCase();
+
+  while (!Object.keys(VALID_CHOICES).includes(choice)) {
+    prompt('Please enter a valid choice:');
+    prompt(`(${Object.keys(VALID_CHOICES).join(', ')})`);
+    choice = rlSync.prompt().trim().toLowerCase();
+  }
+
+  this.move = choice;
+  this.moveHistory.push(VALID_CHOICES[this.move]);
+};
+
 
 function Computer() {
-  this.choose = function() {
-    let choices = Object.keys(VALID_CHOICES);
-    let randIdx = Math.floor(Math.random() * choices.length);
-
-    this.move = choices[randIdx];
-    this.moveHistory.push(VALID_CHOICES[this.move]);
-  };
+  Player.call(this);
 }
 
-Human.prototype = new Player();
-Human.prototype.constructor = Human;
+Computer.prototype.choose = function() {
+  let choices = Object.keys(VALID_CHOICES);
+  let randIdx = Math.floor(Math.random() * choices.length);
 
-Computer.prototype = new Player();
-Computer.prototype.constructor = Computer;
+  this.move = choices[randIdx];
+  this.moveHistory.push(VALID_CHOICES[this.move]);
+};
 
 function RPSGame() {
   this.human = new Human();
@@ -220,6 +219,7 @@ RPSGame.prototype = {
   }
 };
 
-let rps = new RPSGame();
+RPSGame.prototype.constructor = RPSGame;
 
+let rps = new RPSGame();
 rps.playGame();
