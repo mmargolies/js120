@@ -14,30 +14,39 @@ Player (n)
 const rlSync = require('readline-sync');
 
 class Square {
-  constructor(marker = ' ') {
+  static EMPTY_MARKER     = ' ';
+  static HUMAN_MARKER     = 'X';
+  static COMPUTER_MARKER  = 'O';
+
+  constructor(marker = Square.EMPTY_MARKER) {
     this.marker = marker;
   }
 
   toString() {
     return this.marker;
   }
+
+  setMarker(marker) {
+    this.marker = marker;
+  }
+
+  isUnused() {
+    return this.marker === Square.EMPTY_MARKER;
+  }
 }
 
 class Board {
   constructor() {
-    this.squares = {
-      1: new Square("X"),
-      2: new Square(" "),
-      3: new Square(" "),
-      4: new Square(" "),
-      5: new Square("X"),
-      6: new Square(" "),
-      7: new Square(" "),
-      8: new Square(" "),
-      9: new Square("O"),
-    };
+    this.squares = {};
+
+    for (let key = 1; key <= 9; key += 1) {
+      this.squares[key] = new Square();
+    }
   }
+
   display() {
+    console.clear();
+
     console.log("");
     console.log("     |     |");
     console.log(`  ${this.squares['1']}  |  ${this.squares['2']}  |  ${this.squares['3']}`);
@@ -52,6 +61,20 @@ class Board {
     console.log("     |     |");
     console.log("");
   }
+
+  markSquareAt(key, marker) {
+    this.squares[key].setMarker(marker);
+  }
+
+  unusedSquares() {
+    return Object.keys(this.squares).filter(key => {
+      return this.squares[key].isUnused();
+    });
+  }
+
+  isFull() {
+    return this.unusedSquares().length === 0;
+  }
 }
 class Row {
   constructor() {
@@ -59,46 +82,39 @@ class Row {
   }
 }
 
-class Marker {
-  constructor() {
-    // STUB
-  }
-}
-
 class Player {
-  constructor() {
-    // STUB
+  constructor(marker) {
+    this.marker = marker;
   }
 
-  mark() {
-    // STUB
-    // How to implement the 'marking'? Direct access to board?
-  }
-
-  play() {
-    // STUB
-    // How to have the player 'play' the game? Board access?
+  getMarker() {
+    return this.marker;
   }
 }
 
 class Human extends Player {
   constructor() {
-    // STUB
-    // 'marker' to keep track of player being x's or o's?
+    super(Square.HUMAN_MARKER);
   }
 }
 
 class Computer extends Player {
   constructor() {
-    // STUB
+    super(Square.COMPUTER_MARKER);
   }
 }
 
 class TTTgame {
+  static WINNING_COMBOS  = [
+    [1, 2, 3], [4, 5, 6], [7, 8, 9], // rows
+    [1, 4, 7], [2, 5, 8], [3, 6, 9], // columns
+    [1, 5, 9], [3, 5, 7]             // diagonals
+  ];
+
   constructor() {
-    // SPIKE
-    // needs board, players
-    this.board = new Board();
+    this.board    = new Board();
+    this.human    = new Human();
+    this.computer = new Computer();
   }
 
   play() {
@@ -111,12 +127,11 @@ class TTTgame {
       while (true) {
         this.board.display();
 
-        this.firstPlayerMoves();
+        this.humanMoves();
         if (this.gameOver()) break;
 
-        this.secondPlayerMoves();
+        this.computerMoves();
         if (this.gameOver()) break;
-        break;
       }
 
       this.displayResults();
@@ -128,6 +143,13 @@ class TTTgame {
 
   prompt(text) {
     console.log(`>> ${text}`);
+  }
+
+  joinOr(arr, delim = ', ', word = 'or') {
+    if (arr.length < 2) return arr.join('');
+
+    return arr.slice(0, (arr.length - 1)).join(delim) +
+           `${delim}${word} ${arr[arr.length - 1]}`;
   }
 
   clearScreen() {
@@ -151,20 +173,40 @@ class TTTgame {
     this.clearScreen();
   }
 
-  firstPlayerMoves() {
-    // STUB
-    // if not computer, prompts the player to mark a square of their choice
+  humanMoves() {
+    let validChoices = this.board.unusedSquares();
+    this.prompt(`Pick a square (${this.joinOr(validChoices)}):`);
+    let choice = rlSync.question().trim();
+
+    while (!validChoices.includes(choice)) {
+      this.prompt(
+        `Choose a valid square (${this.joinOr(validChoices)}):`
+      );
+      choice = rlSync.question().trim();
+    }
+
+    this.board.markSquareAt(choice, this.human.getMarker());
   }
 
-  secondPlayerMoves() {
+  computerMoves() {
+    let validChoices = this.board.unusedSquares();
+    // if (validChoices.length < 1) return null;
+
+    let choiceIdx = Math.floor(Math.random() * validChoices.length);
+
+    this.board.markSquareAt(validChoices[choiceIdx], this.computer.getMarker());
+  }
+
+  someoneWon() {
     // STUB
-    // if not computer, prompts the player to mark a square of their choice
+    // use WINNING_COMBOS to map an array of current markers
+    // test if any array is full of comp/human markers
   }
 
   gameOver() {
-    // STUB
-    // detects if there is a winner OR if there is a tie
+    return this.board.isFull() || this.someoneWon();
   }
+
 
   displayResults() {
     // STUB
