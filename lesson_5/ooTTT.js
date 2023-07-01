@@ -1,16 +1,3 @@
-/*
-Game (n)
-Board (n)
-Row (n)
-Square (n)
-Marker (n)
-Player (n)
-    Mark (v)
-    Play (v)
-    Human (n)
-    Computer (n)
-*/
-
 const rlSync = require('readline-sync');
 
 class Square {
