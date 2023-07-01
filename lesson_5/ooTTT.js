@@ -30,6 +30,10 @@ class Square {
     this.marker = marker;
   }
 
+  getMarker() {
+    return this.marker;
+  }
+
   isUnused() {
     return this.marker === Square.EMPTY_MARKER;
   }
@@ -75,10 +79,11 @@ class Board {
   isFull() {
     return this.unusedSquares().length === 0;
   }
-}
-class Row {
-  constructor() {
-    // STUB
+
+  countMarkersFor(player, keyArr) {
+    return keyArr.filter(key => {
+      return this.squares[key].getMarker() === player.getMarker();
+    }).length;
   }
 }
 
@@ -105,11 +110,13 @@ class Computer extends Player {
 }
 
 class TTTgame {
-  static WINNING_COMBOS  = [
+  static WINNING_COMBOS = [
     [1, 2, 3], [4, 5, 6], [7, 8, 9], // rows
     [1, 4, 7], [2, 5, 8], [3, 6, 9], // columns
     [1, 5, 9], [3, 5, 7]             // diagonals
   ];
+
+  static WINNING_NUM = 3;
 
   constructor() {
     this.board    = new Board();
@@ -118,12 +125,13 @@ class TTTgame {
   }
 
   play() {
-    // SPIKE
     this.displayWelcomeMessage();
     this.displayRules();
     this.waitForAcknowledgement();
 
     do {
+      this.reset();
+
       while (true) {
         this.board.display();
 
@@ -134,6 +142,7 @@ class TTTgame {
         if (this.gameOver()) break;
       }
 
+      this.board.display();
       this.displayResults();
       this.waitForAcknowledgement();
     } while (this.playAgain());
@@ -158,12 +167,11 @@ class TTTgame {
 
   displayWelcomeMessage() {
     this.clearScreen();
-    this.prompt('Hello & welcome to Tic-Tac-Toe!');
+    this.prompt('Hello & welcome to Tic-Tac-Toe!\n');
   }
 
   displayRules() {
-    // STUB
-    // tells player rules of the game (rounds?)
+    this.prompt('3 in a row wins!');
   }
 
   waitForAcknowledgement() {
@@ -190,17 +198,19 @@ class TTTgame {
 
   computerMoves() {
     let validChoices = this.board.unusedSquares();
-    // if (validChoices.length < 1) return null;
-
     let choiceIdx = Math.floor(Math.random() * validChoices.length);
 
     this.board.markSquareAt(validChoices[choiceIdx], this.computer.getMarker());
   }
 
   someoneWon() {
-    // STUB
-    // use WINNING_COMBOS to map an array of current markers
-    // test if any array is full of comp/human markers
+    return this.detectWinner(this.human) || this.detectWinner(this.computer);
+  }
+
+  detectWinner(player) {
+    return TTTgame.WINNING_COMBOS.some(combo => {
+      return this.board.countMarkersFor(player, combo) === TTTgame.WINNING_NUM;
+    });
   }
 
   gameOver() {
@@ -209,14 +219,25 @@ class TTTgame {
 
 
   displayResults() {
-    // STUB
-    // shows who won, or shows that there was a tie
+    if      (this.detectWinner(this.human))    this.prompt('You won!! Nice :)');
+    else if (this.detectWinner(this.computer)) this.prompt('Computer wins...');
+    else                                       this.prompt('Oh. A tie.');
+  }
+
+  reset() {
+    this.board = new Board();
   }
 
   playAgain() {
-    // STUB
-    // prompts the user with a choice to play again
-    return false;
+    this.prompt('Would you like to play again? (yes/no, y/n)');
+    let choice = rlSync.prompt().trim().toLowerCase();
+
+    while (!['yes', 'no', 'y', 'n'].includes(choice)) {
+      this.prompt('Please enter a valid choice (yes/no, y/n)');
+      choice = rlSync.prompt().trim().toLowerCase();
+    }
+
+    return choice === 'yes' || choice === 'y';
   }
 
   displayGoodbyeMessage() {
