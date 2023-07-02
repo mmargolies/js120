@@ -19,10 +19,10 @@
 */
 
 // LEFT OFF:
-// Generating a shuffled deck
+// Figuring out the Hand class
 
 // TODO:
-// Flesh out Participant -> dealer/player classes
+// Continue w/Hand
 // Deal hands!
 // Display cards!
 
@@ -61,22 +61,31 @@ class Deck {
   }
 }
 
-class Participant {
+// Use Hand as a mix-in with Player and Dealer
+class Hand {
   constructor() {
-    // STUB
-    // any state?
+    this.score = 0;
+    this.busted = false;
+    this.cards = [];
   }
 
-  // behavior?
+  addToHand() {
+    // STUB
+  }
+
+  showCards() {
+    // STUB
+  }
+
+  reset() {
+    this.cards = [];
+  }
+
 }
 
-class Player extends Participant {
-  // eslint-disable-next-line constructor-super
+class Player {
   constructor() {
     // STUB
-    // any inheritance? (super)
-    // busted state
-    // score state
   }
 
   hit() {
@@ -88,12 +97,8 @@ class Player extends Participant {
   }
 }
 
-class Dealer extends Participant {
-  // eslint-disable-next-line constructor-super
+class Dealer {
   constructor() {
-    // STUB
-    // any inheritance? (super)
-    // busted state, score state
   }
 
   hit() {
@@ -112,8 +117,8 @@ class Dealer extends Participant {
 
 class TwentyOneGame {
   constructor() {
-    // STUB
-    // players
+    this.player = new Player();
+    this.Dealer = new Dealer();
     this.deck = new Deck();
   }
 
@@ -153,13 +158,18 @@ class TwentyOneGame {
   }
 
   displayRules() {
-    console.log('The Goal:');
-    this.prompt('Get as close to 21 as possible!\n');
+    console.log('The Game:');
+    this.prompt('Get as close to 21 as possible!');
+    this.prompt("You and the dealer are dealt two cards to start.");
+    this.prompt('On your turn, you can choose to "hit" (get a card)');
+    this.prompt('or "Stay" (end your turn).\n');
+
     console.log('The rules:');
-    this.prompt('If you go over 21, you "bust" and lose the round');
+    this.prompt('If you go over 21, you "bust" and lose the round!');
     this.prompt(
-      'Aces have a value of 1 or 11 (the best value will be chosen for you)\n'
+      'Aces have a value of 1 or 11 (the best value will be chosen for you).'
     );
+    this.prompt('Face cards have a value of 10.\n');
     this.prompt('Ready?');
   }
 
