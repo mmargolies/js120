@@ -1,42 +1,47 @@
-/*
-    Game (n)
-        start (v)
-    Deck (n)
-        deal (v) (should this be here, or in Dealer?)
-    Card (n)
-    Participant (n)
-    Player (n)
-        hit (v)
-        stay (v)
-        bust (state)
-        Score (n, state)
-    Dealer (n)
-        hit (v)
-        stay (v)
-        deal (v) (should this be here, or in Deck?)
-        bust (state)
-        Score (n, state)
-*/
-
 // LEFT OFF:
-// Figuring out the Hand class
+// fixing score calc for aces
 
 // TODO:
-// Continue w/Hand
-// Deal hands!
-// Display cards!
+// keep fixing score scalc
+// dealers turn!
+// implement betting
 
 const rlSync  = require('readline-sync');
 const shuffle = require('shuffle-array');
 
 class Card {
-  static SUITS = ['C', 'S', 'H', 'D' ]
-  static CARDS_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K', 'A'];
+  static SUITS       = ['C', 'S', 'H', 'D' ]
+  static FACE_CARDS  = ['J', 'Q', 'K',];
+  static ACE         = 'A'
+  static CARD_VALUES = [
+    Card.ACE, 2, 4, 7
+  ];
 
   constructor(value, suit) {
     this.value = value;
     this.suit = suit;
     // if you win with a GOLDEN card you get + 3 dollars
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  isFaceCard() {
+    return Card.FACE_CARDS.includes(this.value);
+  }
+
+  isAce() {
+    return this.getValue() === Card.ACE;
+  }
+
+  toString() {
+    return `[${this.value}|${this.suit}]`;
+    // return `
+    // +---+
+    // |${this.value} ${this.suit}|
+    // +---+
+    // `;
   }
 }
 
@@ -44,8 +49,8 @@ class Deck {
   constructor() {
     this.cards = [];
     Card.SUITS.forEach(suit => {
-      Card.CARDS_VALUES.forEach(cardNum => {
-        this.cards.push(new Card(cardNum, suit));
+      Card.CARD_VALUES.forEach(cardVal => {
+        this.cards.push(new Card(cardVal, suit));
       });
     });
 
@@ -56,69 +61,62 @@ class Deck {
     shuffle(this.cards);
   }
 
-  deal() {
-    // does this belong here? goes in dealer maybe?
+  dealCard() {
+    return this.cards.pop();
   }
 }
 
-// Use Hand as a mix-in with Player and Dealer
-class Hand {
-  constructor() {
-    this.score = 0;
-    this.busted = false;
-    this.cards = [];
-  }
+const Hand = {
+  addToHand(card) {
+    this.cards.push(card);
+  },
 
-  addToHand() {
-    // STUB
+  getCards() {
+    return this.cards;
+  },
+
+  resetHand() {
+    this.cards = [];
+  },
+};
+
+class Human {
+  constructor() {
+    this.resetHand();
   }
 
   showCards() {
-    // STUB
-  }
-
-  reset() {
-    this.cards = [];
+    return this.getCards().join(' ');
   }
 
 }
 
-class Player {
-  constructor() {
-    // STUB
-  }
-
-  hit() {
-    // STUB
-  }
-
-  stay() {
-    // STUB
-  }
-}
+Object.assign(Human.prototype, Hand);
 
 class Dealer {
   constructor() {
+    this.resetHand();
   }
 
-  hit() {
-    // STUB
+  showFaceupCards() { // rename this? Does this method make sense?
+    return this.getCards().slice(1).join(' ') + ' and a facedown card';
   }
 
-  stay() {
-    // STUB
+  revealCards() {
+    this.hand.showCards();
   }
 
-  deal() {
-    // STUB
-    // does this belong here? or in deck?
-  }
 }
 
+Object.assign(Dealer.prototype, Hand);
+
 class TwentyOneGame {
+  static HIT_STAY_RESPONSES = ['h', 'hit', 's', 'stay'];
+  static TAGET_SCORE        = 21;
+
   constructor() {
-    this.player = new Player();
-    this.Dealer = new Dealer();
+    this.human = new Human();
+    this.dealer = new Dealer();
     this.deck = new Deck();
   }
 
@@ -128,12 +126,12 @@ class TwentyOneGame {
     this.displayRules();
     this.waitForAcknowledgement();
 
-    this.dealCards();
-    this.showCards();
-    this.playerTurn();
+    this.dealHand();
+    this.displayCards();
+    this.humanTurn();
     this.dealerTurn();
 
-    this.displayResult();
+    this.displayResults();
     this.waitForAcknowledgement();
     this.displayGoodbyeMessage();
   }
@@ -146,6 +144,10 @@ class TwentyOneGame {
     console.clear();
   }
 
+  getLowercaseUserChoice() {
+    return rlSync.prompt().trim().toLowerCase();
+  }
+
   waitForAcknowledgement() {
     rlSync.question(
       '(Press Enter to continue...)', {hideEchoBack: true, mask: ''}
@@ -154,6 +156,7 @@ class TwentyOneGame {
   }
 
   displayWelcomeMessage() {
+    this.clearScreen();
     this.prompt('Welcome to Twenty-one!\n');
   }
 
@@ -162,7 +165,8 @@ class TwentyOneGame {
     this.prompt('Get as close to 21 as possible!');
     this.prompt("You and the dealer are dealt two cards to start.");
     this.prompt('On your turn, you can choose to "hit" (get a card)');
-    this.prompt('or "Stay" (end your turn).\n');
+    this.prompt('or "stay" (end your turn).');
+    this.prompt('Cards are diplayed as [rank|suit]\n');
 
     console.log('The rules:');
     this.prompt('If you go over 21, you "bust" and lose the round!');
@@ -173,23 +177,77 @@ class TwentyOneGame {
     this.prompt('Ready?');
   }
 
-  dealCards() {
-    // STUB
+  dealHand() {
+    this.human.addToHand(this.deck.dealCard());
+    this.human.addToHand(this.deck.dealCard());
+
+    this.dealer.addToHand(this.deck.dealCard());
+    this.dealer.addToHand(this.deck.dealCard());
   }
 
-  showCards() {
-    // STUB
+  displayCards() {
+    this.clearScreen();
+    console.log(`The dealer has: ${this.dealer.showFaceupCards()}\n`);
+    // console.log(`Total: ${this.calcHandTotal(this.dealer.getCards())}\n\n`);
+
+    console.log(`You have: ${this.human.showCards()}`);
+    console.log(`Total: ${this.calcHandTotal(this.human.getCards())}\n`);
   }
 
-  playerTurn() {
-    // STUB
+  keepHitting() {
+    this.prompt('Would you like to hit or stay? (h/hit, s/stay)');
+    let choice = this.getLowercaseUserChoice();
+
+    while (!TwentyOneGame.HIT_STAY_RESPONSES.includes(choice)) {
+      this.prompt('Please enter a valid choice (h/hit, s/stay)');
+      choice = this.getLowercaseUserChoice();
+    }
+
+    return choice === 'h' || choice === 'hit';
+  }
+
+  calcHandTotal(hand) {
+    let score = 0;
+
+    // this doesn't work because it just counts the cards in order.
+    // ex. your hand is A, 2, 7, 7 --> should be 17 (1 + 2 + 7 + 7)
+    // this implementation starts with the aces, sees that the
+    //    total - 11 is < 21, and adds 11 to the total.
+
+    // must figure out a way to add all aces as 11, and then subtract
+    // 10 for each ace while the score is still above 21.
+
+    hand.forEach(card => {
+      if (card.isFaceCard()) {
+        score += 10; // magic numbers here?
+      } else if (card.isAce()) {
+        score += score <=  TwentyOneGame.TAGET_SCORE - 11 ? 11 : 1;
+      } else {
+        score += card.getValue();
+      }
+    });
+
+    return score;
+  }
+
+  busted(hand) {
+    return this.calcHandTotal(hand) > TwentyOneGame.TAGET_SCORE;
+  }
+
+  humanTurn() {
+    while (this.keepHitting()) {
+      this.human.addToHand(this.deck.dealCard());
+      this.displayCards();
+
+      if (this.busted(this.human.getCards())) break;
+    }
   }
 
   dealerTurn() {
     // STUB
   }
 
-  displayResult() {
+  displayResults() {
     // STUB
   }
 
