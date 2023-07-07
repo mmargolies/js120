@@ -1,9 +1,7 @@
 // LEFT OFF:
-// fixing score calc for aces
+// implementing playGame, aka the 'full' game loop
 
 // TODO:
-// keep fixing score scalc
-// dealers turn!
 // implement betting
 
 const rlSync  = require('readline-sync');
@@ -13,14 +11,11 @@ class Card {
   static SUITS       = ['C', 'S', 'H', 'D' ]
   static FACE_CARDS  = ['J', 'Q', 'K',];
   static ACE         = 'A'
-  static CARD_VALUES = [
-    Card.ACE, 2, 4, 7
-  ];
+  static CARD_VALUES = [ 2, 3, 4, 5, 6, 7, 8, 9, ...Card.FACE_CARDS, Card.ACE];
 
   constructor(value, suit) {
     this.value = value;
     this.suit = suit;
-    // if you win with a GOLDEN card you get + 3 dollars
   }
 
   getValue() {
@@ -75,6 +70,10 @@ const Hand = {
     return this.cards;
   },
 
+  showCards() {
+    return this.getCards().join(' ');
+  },
+
   resetHand() {
     this.cards = [];
   },
@@ -84,11 +83,6 @@ class Human {
   constructor() {
     this.resetHand();
   }
-
-  showCards() {
-    return this.getCards().join(' ');
-  }
-
 }
 
 Object.assign(Human.prototype, Hand);
@@ -103,7 +97,7 @@ class Dealer {
   }
 
   revealCards() {
-    this.hand.showCards();
+    this.showCards();
   }
 
 }
@@ -112,7 +106,9 @@ Object.assign(Dealer.prototype, Hand);
 
 class TwentyOneGame {
   static HIT_STAY_RESPONSES = ['h', 'hit', 's', 'stay'];
-  static TAGET_SCORE        = 21;
+  static YES_NO_RESPONSES   = ['y', 'yes', 'n', 'no']
+  static TARGET_SCORE       = 21;
+  static DEALER_LIMIT       = 17;
 
   constructor() {
     this.human = new Human();
@@ -120,20 +116,34 @@ class TwentyOneGame {
     this.deck = new Deck();
   }
 
-  play() {
-    // SPIKE
+  playGame() {
     this.displayWelcomeMessage();
     this.displayRules();
     this.waitForAcknowledgement();
 
+    do {
+      this.playHand();
+    } while (this.keepPlaying());
+
+    this.displayGoodbyeMessage();
+  }
+
+  playHand() {
+    // this.displayWelcomeMessage();
+    // this.displayRules();
+    // this.waitForAcknowledgement();
+
     this.dealHand();
     this.displayCards();
     this.humanTurn();
-    this.dealerTurn();
+
+    if (!this.busted(this.human)) {
+      this.dealerTurn();
+    }
 
     this.displayResults();
     this.waitForAcknowledgement();
-    this.displayGoodbyeMessage();
+    // this.displayGoodbyeMessage();
   }
 
   prompt(text) {
@@ -178,6 +188,9 @@ class TwentyOneGame {
   }
 
   dealHand() {
+    this.human.resetHand();
+    this.dealer.resetHand();
+
     this.human.addToHand(this.deck.dealCard());
     this.human.addToHand(this.deck.dealCard());
 
@@ -188,10 +201,9 @@ class TwentyOneGame {
   displayCards() {
     this.clearScreen();
     console.log(`The dealer has: ${this.dealer.showFaceupCards()}\n`);
-    // console.log(`Total: ${this.calcHandTotal(this.dealer.getCards())}\n\n`);
 
     console.log(`You have: ${this.human.showCards()}`);
-    console.log(`Total: ${this.calcHandTotal(this.human.getCards())}\n`);
+    console.log(`Total: ${this.calcHandTotal(this.human)}\n`);
   }
 
   keepHitting() {
@@ -204,34 +216,30 @@ class TwentyOneGame {
     }
 
     return choice === 'h' || choice === 'hit';
+    // kinda defeats the purpose of the static property, no?
   }
 
-  calcHandTotal(hand) {
-    let score = 0;
+  determineValue(card) {
+    if (card.isFaceCard()) return 10;
+    else if (card.isAce()) return 11;
+    else return card.getValue();
+  }
 
-    // this doesn't work because it just counts the cards in order.
-    // ex. your hand is A, 2, 7, 7 --> should be 17 (1 + 2 + 7 + 7)
-    // this implementation starts with the aces, sees that the
-    //    total - 11 is < 21, and adds 11 to the total.
+  calcHandTotal(player) {
+    let cards = player.getCards();
+    let score = cards.reduce((sum, card) => sum + this.determineValue(card), 0);
 
-    // must figure out a way to add all aces as 11, and then subtract
-    // 10 for each ace while the score is still above 21.
-
-    hand.forEach(card => {
-      if (card.isFaceCard()) {
-        score += 10; // magic numbers here?
-      } else if (card.isAce()) {
-        score += score <=  TwentyOneGame.TAGET_SCORE - 11 ? 11 : 1;
-      } else {
-        score += card.getValue();
+    cards.forEach(card => {
+      if (card.isAce() && score > TwentyOneGame.TARGET_SCORE) {
+        score -= 10;
       }
     });
 
     return score;
   }
 
-  busted(hand) {
-    return this.calcHandTotal(hand) > TwentyOneGame.TAGET_SCORE;
+  busted(player) {
+    return this.calcHandTotal(player) > TwentyOneGame.TARGET_SCORE;
   }
 
   humanTurn() {
@@ -239,23 +247,67 @@ class TwentyOneGame {
       this.human.addToHand(this.deck.dealCard());
       this.displayCards();
 
-      if (this.busted(this.human.getCards())) break;
+      if (this.busted(this.human)) break;
     }
   }
 
   dealerTurn() {
-    // STUB
+    let score = this.calcHandTotal(this.dealer);
+
+    while (score < TwentyOneGame.DEALER_LIMIT) {
+      this.dealer.addToHand(this.deck.dealCard());
+      score = this.calcHandTotal(this.dealer);
+
+      if (this.busted(this.dealer)) break;
+    }
+  }
+
+  displayWinner() {
+    if (this.busted(this.human)) {
+      this.prompt('Busted...the dealer wins this hand!');
+    } else if (this.busted(this.dealer)) {
+      this.prompt('The dealer busted -- you won the hand!');
+    } else {
+      let humanScore = this.calcHandTotal(this.human);
+      let dealerScore = this.calcHandTotal(this.dealer);
+
+      if (humanScore > dealerScore) this.prompt('You won the hand!');
+      else if (humanScore < dealerScore) this.prompt('You lost the hand.');
+      else if (humanScore === dealerScore) this.prompt("This hand's a tie.");
+    }
+
   }
 
   displayResults() {
-    // STUB
+    this.clearScreen();
+    console.log(`The dealer ended with: ${this.dealer.showCards()}`);
+    console.log(`Total: ${this.calcHandTotal(this.dealer)}\n`);
+
+    console.log(`You ended with: ${this.human.showCards()}`);
+    console.log(`Total: ${this.calcHandTotal(this.human)}\n`);
+
+    this.displayWinner();
+  }
+
+  keepPlaying() {
+    this.prompt('Would you like to keep playing? (y/yes, n/no)');
+    let choice = this.getLowercaseUserChoice();
+
+    while (!TwentyOneGame.YES_NO_RESPONSES.includes(choice)) {
+      this.prompt('Please enter a valid choice (y/yes, n/no))');
+      choice = this.getLowercaseUserChoice();
+    }
+
+    return choice === 'y' || choice === 'yes';
+    // kinda defeats the purpose of the static property, no?
   }
 
   displayGoodbyeMessage() {
-    this.prompt('Thanks for playing! :)');
+    this.clearScreen();
+    this.prompt('Goodbye, thanks for playing! :)');
   }
 }
 
 let twentyOne = new TwentyOneGame();
 
-twentyOne.play();
+twentyOne.playGame();
