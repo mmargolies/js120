@@ -1,9 +1,3 @@
-// LEFT OFF:
-// Adjusting static properties for responses
-
-// TODO:
-// re-generate deck if it is empty
-
 const rlSync  = require('readline-sync');
 const shuffle = require('shuffle-array');
 
@@ -77,9 +71,13 @@ const Hand = {
 };
 
 class Human {
+  static STARTING_FUNDS = 5;
+  static RICH_LIMIT     = 10;
+  static BROKE_LIMIT    = 0;
+
   constructor() {
     this.resetHand();
-    this.wallet = 5;
+    this.wallet = Human.STARTING_FUNDS;
   }
 
   getBalance() {
@@ -95,11 +93,11 @@ class Human {
   }
 
   isBroke() {
-    return this.wallet <= 0;
+    return this.wallet <= Human.BROKE_LIMIT;
   }
 
   isRich() {
-    return this.wallet >= 10;
+    return this.wallet >= Human.RICH_LIMIT;
   }
 }
 
@@ -110,7 +108,7 @@ class Dealer {
     this.resetHand();
   }
 
-  showFaceupCards() { // rename this? Does this method make sense?
+  showFaceupCards() {
     return this.getCards().slice(1).join(' ') + ' and a facedown card';
   }
 
@@ -131,9 +129,9 @@ class TwentyOneGame {
   static DEALER_LIMIT   = 17;
 
   constructor() {
-    this.human = new Human();
+    this.human  = new Human();
     this.dealer = new Dealer();
-    this.deck = new Deck();
+    this.deck   = new Deck();
   }
 
   play() {
@@ -156,9 +154,7 @@ class TwentyOneGame {
     this.displayBalance();
     this.humanTurn();
 
-    if (!this.busted(this.human)) {
-      this.dealerTurn();
-    }
+    if (!this.busted(this.human)) this.dealerTurn();
 
     this.displayResults();
     this.updateWallet();
@@ -211,14 +207,7 @@ class TwentyOneGame {
   }
 
   dealHand() {
-    // what to do about a potentially empty deck?
-    // new deck every hand? Not a fan of this option
-
-    // ideally, there's a way to detect when the deck is empty, and use that
-    //    condition to generate a new deck. Can't do that in dealCard though...
-    //    The trick here is being in the correct scope to instantiate a new deck
-    //    but not have to call a method within the game class each time a card
-    //    is dealt.
+    this.deck = new Deck();
     this.human.resetHand();
     this.dealer.resetHand();
 
@@ -256,7 +245,7 @@ class TwentyOneGame {
   determineValue(card) {
     if (card.isFaceCard()) return 10;
     else if (card.isAce()) return 11;
-    else return card.getValue();
+    else                   return card.getValue();
   }
 
   calcHandTotal(player) {
